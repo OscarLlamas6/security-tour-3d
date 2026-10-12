@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa 3D de Ciberseguridad</title>
+<style>
+  :root{
+    --bg:#070b14; --panel:rgba(14,21,38,.88); --line:rgba(120,150,210,.22);
+    --text:#e6ecf8; --muted:#93a3c4; --accent:#4da3ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+    font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  #app{position:fixed;inset:0}
+  #app canvas{display:block}
+  .lbl{font:600 12px system-ui,sans-serif;padding:2px 8px;border-radius:999px;white-space:nowrap;
+    background:rgba(7,11,20,.72);border:1px solid currentColor;pointer-events:none;transition:opacity .2s}
+  .lbl.zone{color:#9bb0d0;font-weight:500;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+  .lbl small{display:block;font-weight:400;color:var(--muted);font-size:10px;text-align:center}
+
+  #menu{position:fixed;left:14px;top:14px;width:208px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:14px;backdrop-filter:blur(10px);z-index:5;max-height:calc(100% - 28px);overflow:auto}
+  #menu h1{font-size:15px;margin:0 0 2px}
+  #menu p{margin:0 0 12px;color:var(--muted);font-size:12px}
+  #btns{display:grid;gap:6px;margin-bottom:12px}
+  button{font:inherit;color:inherit;cursor:pointer}
+  .term{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:7px 10px;border-radius:9px;
+    background:rgba(255,255,255,.04);border:1px solid transparent;transition:.15s}
+  .term:hover{background:rgba(255,255,255,.09)}
+  .term.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 16%,transparent)}
+  .term i{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);flex:none}
+  .term b{font-weight:650}
+  .grp{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 0 0}
+  .grp:first-child{margin-top:0}
+  .chk{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:2px 0 8px;cursor:pointer}
+  .act{width:100%;padding:8px 10px;border-radius:9px;margin-top:6px;border:1px solid var(--line);background:rgba(255,255,255,.05)}
+  .act:hover{background:rgba(255,255,255,.11)}
+  .act.primary{background:#c4262e;border-color:#ff5560}
+  .act.primary:hover{background:#dc2f38}
+
+  #panel{position:fixed;right:14px;top:14px;bottom:14px;width:380px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:18px;overflow:auto;backdrop-filter:blur(10px);z-index:5}
+  #panel h2{margin:0;font-size:26px;letter-spacing:.01em}
+  #panel .full{color:var(--muted);font-size:12px;margin-bottom:10px}
+  #panel .one{font-size:15px;margin:0 0 14px}
+  .tag{display:inline-block;font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid var(--c);color:var(--c);margin-bottom:12px}
+  .row{margin:0 0 11px}
+  .row span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:1px}
+  .row.q{border-left:3px solid var(--c);padding-left:10px}
+  .row.q p{font-style:italic;font-size:15px}
+  .row p{margin:0}
+  h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 8px}
+  .bar{display:grid;grid-template-columns:86px 1fr;align-items:center;gap:8px;margin:4px 0;font-size:12px;color:var(--muted)}
+  .bar u{display:block;height:7px;border-radius:4px;background:rgba(255,255,255,.08);position:relative;text-decoration:none}
+  .bar u::after{content:"";position:absolute;inset:0 auto 0 0;width:calc(var(--v)*100%);border-radius:4px;background:var(--c);box-shadow:0 0 8px var(--c)}
+  .note{font-size:11px;color:var(--muted);margin-top:6px}
+  .vs{display:block;width:100%;text-align:left;padding:9px 11px;margin:0 0 7px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.035)}
+  .vs:hover{background:rgba(255,255,255,.09)}
+  .vs strong{color:var(--c)}
+  .vs div{font-size:13px;color:var(--text);margin-top:2px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+  .chip{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--c);color:var(--c);background:transparent}
+  .layer{display:block;width:100%;text-align:left;padding:9px 11px;margin:0 0 7px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.035)}
+  .layer:hover{background:rgba(255,255,255,.09)}
+  .layer b{color:var(--c)}
+  .layer small{display:block;color:var(--muted);font-size:12px}
+  .stepnav{display:flex;gap:8px;margin-top:16px}
+  .stepnav button{flex:1;padding:9px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.07)}
+  .stepnav button:hover:not(:disabled){background:rgba(255,255,255,.14)}
+  .stepnav button:disabled{opacity:.35;cursor:default}
+  .dots{display:flex;gap:5px;margin:6px 0 14px}
+  .dots i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.1)}
+  .dots i.d{background:#ff5560}
+  .dots i.now{background:#fff}
+
+  #modal{position:fixed;inset:0;background:rgba(3,6,12,.78);z-index:20;display:grid;place-items:center;padding:20px}
+  #modal[hidden]{display:none}
+  #modal .box{background:#0e1526;border:1px solid var(--line);border-radius:14px;padding:20px;max-width:1100px;max-height:90vh;overflow:auto;position:relative}
+  #modal table{border-collapse:collapse;width:100%;font-size:13px}
+  #modal th,#modal td{padding:9px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  #modal th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em;position:sticky;top:-20px;background:#0e1526}
+  #modal td:first-child{font-weight:700;white-space:nowrap}
+  #modal .x{position:absolute;right:12px;top:10px;background:none;border:0;font-size:22px;color:var(--muted)}
+
+  @media (max-width:900px){
+    #menu{width:auto;right:14px;max-height:none}
+    #btns{grid-template-columns:repeat(4,1fr)}
+    .term{padding:6px 8px;font-size:12px}
+    .acts{display:flex;gap:6px}
+    .act{margin-top:0}
+    #panel{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:42vh}
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app"></div>
+
+<nav id="menu">
+  <h1>Mapa 3D · Ciberseguridad</h1>
+  <p>Arrastra para girar, rueda para zoom. Haz clic en un término.</p>
+  <div id="btns"></div>
+  <div class="acts">
+    <label class="chk"><input type="checkbox" id="coreOnly"> Solo los 8 términos núcleo</label>
+    <button class="act" id="btnHome">Vista general</button>
+    <button class="act primary" id="btnSim">▶ Simular un ataque</button>
+    <button class="act" id="btnTable">Tabla comparativa</button>
+  </div>
+</nav>
+
+<aside id="panel"></aside>
+
+<div id="modal" hidden><div class="box"><button class="x" id="modalX" aria-label="Cerrar">×</button>
+  <h2 style="margin-top:0">Comparativa rápida</h2><div id="tbl"></div></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {CSS2DRenderer, CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* ------------------------------------------------------------------ */
+/*  DATOS DIDÁCTICOS                                                   */
+/* ------------------------------------------------------------------ */
+const ORDER = ['SIEM','XDR','EDR','SOAR','NDR','UEBA','TI','VM',
+  'NIDS','HIDS','DECEPTION','SANDBOX','NIPS','NGFW','EPP','EMAIL','IAM','WAF','CASB','DLP','ASM','MDR','DFIR','ITSM','GRC'];
+const AXES = [
+  ['Amplitud','Cuántas fuentes o dominios abarca'],
+  ['Profundidad','Nivel de detalle de lo que ve'],
+  ['Detección','Encuentra amenazas por sí misma'],
+  ['Respuesta','Puede actuar o contener'],
+  ['Prevención','Reduce el riesgo antes del ataque'],
+];
+const TERMS = {
+  SIEM:{ short:'SIEM', color:0x4da3ff, full:'Security Information and Event Management', cat:'Recolectar y correlacionar',
+    one:'Centraliza los logs de toda la organización y los correlaciona para detectar e investigar incidentes.',
+    q:'¿Qué está pasando en toda mi infraestructura y qué eventos, juntos, forman un incidente?',
+    sees:'Logs de casi todo: firewalls, servidores, Active Directory, apps, nube… e incluso las alertas de EDR y NDR.',
+    data:'Logs y eventos normalizados (texto).',
+    acts:'Sobre todo alerta, busca y genera reportes de cumplimiento. Su respuesta es limitada.',
+    analogy:'La sala de monitoreo con todas las cámaras de un edificio: ve mucho, pero alguien debe interpretar y escribir las reglas.',
+    scores:[5,2,4,1,1],
+    vs:[['XDR','El SIEM ingiere cualquier log y tú escribes la detección. XDR trae sensores propios, detección lista y respuesta integrada.'],
+        ['SOAR','El SIEM detecta y alerta; el SOAR ejecuta la respuesta automatizada.'],
+        ['EDR','El EDR es una fuente profunda para un solo dominio (equipos). El SIEM es amplio pero superficial.']] },
+  XDR:{ short:'XDR', color:0xa77bff, full:'Extended Detection and Response', cat:'Detección y respuesta unificada',
+    one:'Detección y respuesta que atraviesa endpoint, red, identidad, correo y nube, mostrada como un único incidente.',
+    q:'¿Cuál es la historia completa del ataque a través de todos mis dominios?',
+    sees:'Telemetría nativa de varias capas (EDR + NDR + identidad + email + nube), ya correlacionada.',
+    data:'Telemetría propia de sus sensores, más conectores de terceros.',
+    acts:'Sí: respuesta entre dominios (aislar host, deshabilitar cuenta, borrar un correo) desde una sola consola.',
+    analogy:'Un detective que une cámaras, huellas y llamadas en un solo caso, en vez de tener cinco carpetas separadas.',
+    scores:[4,4,4,3,1],
+    vs:[['SIEM','XDR: menos fuentes pero profundas, con detección y respuesta incluidas. SIEM: de todo, pero tú armas la detección.'],
+        ['EDR','XDR es la evolución natural del EDR hacia más capas que solo el endpoint.'],
+        ['SOAR','XDR responde dentro de su ecosistema; SOAR orquesta entre cualquier herramienta.']] },
+  EDR:{ short:'EDR', color:0x3ddc84, full:'Endpoint Detection and Response', cat:'Sensor: endpoint',
+    one:'Un agente en laptops y servidores vigila procesos, archivos y memoria, detecta comportamiento malicioso y puede aislar el equipo.',
+    q:'¿Qué hizo exactamente este equipo y está comprometido?',
+    sees:'Procesos, archivos, registro, conexiones y memoria de cada endpoint: máxima profundidad, alcance limitado a equipos con agente.',
+    data:'Telemetría del agente instalado en el host.',
+    acts:'Sí: aislar el host, matar procesos, poner en cuarentena, revertir cambios.',
+    analogy:'Un guardaespaldas pegado a cada computador que ve todo lo que hace.',
+    scores:[2,5,4,4,2],
+    vs:[['XDR','EDR = solo endpoints. XDR extiende la idea a red, identidad, correo y nube.'],
+        ['NDR','El EDR mira dentro del host; el NDR mira el tráfico entre hosts, incluso donde no se puede instalar agente (IoT, impresoras).'],
+        ['UEBA','El EDR detecta técnicas y malware en el equipo; UEBA detecta abuso aunque no haya malware (credenciales robadas).']] },
+  SOAR:{ short:'SOAR', color:0xffd84d, full:'Security Orchestration, Automation and Response', cat:'Respuesta automatizada',
+    one:'Automatiza la respuesta con playbooks que conectan tus herramientas: enriquecer, decidir, contener y documentar sin intervención manual.',
+    q:'¿Cómo respondo rápido y siempre igual ante este tipo de alerta?',
+    sees:'No “ve” amenazas: recibe alertas (del SIEM/XDR) y consulta las APIs de otras herramientas.',
+    data:'Alertas, casos y respuestas de APIs.',
+    acts:'Es su razón de ser: bloquear IP, deshabilitar cuenta, abrir ticket, notificar.',
+    analogy:'El protocolo de emergencia automático: suena la alarma y se cierran puertas, se llama a bomberos y se avisa al gerente.',
+    scores:[3,1,0,5,1],
+    vs:[['SIEM','El SIEM detecta; el SOAR actúa. Suelen trabajar juntos.'],
+        ['XDR','XDR responde dentro de su ecosistema; SOAR orquesta entre cualquier herramienta, incluidos tickets y firewalls.']] },
+  NDR:{ short:'NDR', color:0xff9f43, full:'Network Detection and Response', cat:'Sensor: red',
+    one:'Analiza el tráfico de red (TAP o espejo) con ML y firmas para detectar movimiento lateral, C2 y exfiltración, sin agentes.',
+    q:'¿Qué conversaciones raras hay en mi red?',
+    sees:'Tráfico norte-sur y este-oeste: DNS, flujos, metadatos y a veces paquetes completos.',
+    data:'Paquetes y flujos de red (NetFlow, Zeek).',
+    acts:'Detecta bien; la respuesta es limitada (bloqueo vía firewall/NAC o integrado con SOAR/EDR).',
+    analogy:'Cámaras en los pasillos: no ven qué hace cada persona en su oficina, pero ven quién camina hacia dónde.',
+    scores:[3,4,4,2,1],
+    vs:[['EDR','NDR no necesita agente, así que ve equipos que el EDR no cubre. El EDR ve el detalle interno del equipo.'],
+        ['SIEM','El SIEM lee logs ya generados; el NDR genera detecciones propias desde el tráfico bruto.']] },
+  UEBA:{ short:'UEBA', color:0xff5fb0, full:'User and Entity Behavior Analytics', cat:'Sensor: comportamiento',
+    one:'Aprende el comportamiento normal de usuarios, equipos y cuentas de servicio, y alerta cuando algo se desvía.',
+    q:'¿Es normal que esta cuenta haga esto?',
+    sees:'Inicios de sesión, accesos a archivos, horarios, ubicaciones y volumen de datos, por usuario o entidad.',
+    data:'Logs de identidad y actividad (AD, VPN, SaaS, DLP) más modelos estadísticos y de ML.',
+    acts:'Puntúa riesgo y alerta. Normalmente es una función dentro de un SIEM o XDR, no una herramienta de respuesta.',
+    analogy:'El conserje que conoce a todos: “el contador nunca entra al servidor a las 3 a. m.”',
+    scores:[3,3,4,1,1],
+    vs:[['SIEM','El SIEM usa reglas (“si pasa A y B”); UEBA usa líneas base (“esto no es normal para ti”).'],
+        ['EDR','El EDR busca malware y técnicas en el equipo; UEBA detecta insiders y credenciales robadas sin malware.']] },
+  TI:{ short:'Threat Intel', color:0x2ee6d6, full:'Cyber Threat Intelligence', cat:'Contexto externo',
+    one:'Información sobre atacantes, sus herramientas (IOCs: IPs, hashes, dominios) y técnicas (TTPs) para dar contexto y anticiparse.',
+    q:'¿Quién nos ataca, cómo lo hace y esta IP o hash ya es conocida como maliciosa?',
+    sees:'Feeds externos (MISP, OTX, comerciales), ISACs, reportes y dark web.',
+    data:'Indicadores (IOC) y contexto: actor, campaña, MITRE ATT&CK.',
+    acts:'No actúa sola: alimenta al SIEM, EDR y firewalls para detectar mejor y priorizar.',
+    analogy:'El boletín de la policía con fotos de sospechosos y su modus operandi.',
+    scores:[4,1,1,0,3],
+    vs:[['VM','VM mira tus debilidades; TI mira a los atacantes. Juntas: parchas primero lo que se está explotando.'],
+        ['SIEM','TI no es un detector: es combustible para que SIEM, EDR o XDR detecten con más precisión.']] },
+  VM:{ short:'Vuln. Mgmt', color:0xb6e63a, full:'Vulnerability Management', cat:'Prevención proactiva',
+    one:'Ciclo continuo de descubrir activos, escanear vulnerabilidades (CVE), priorizar por riesgo y parchear.',
+    q:'¿Qué debilidades tengo hoy que un atacante podría explotar?',
+    sees:'Sistemas, software, configuraciones y exposición: versiones y parches pendientes.',
+    data:'Resultados de escáneres (Nessus, Qualys, Tenable), inventario y puntajes CVSS/EPSS.',
+    acts:'Proactivo: recomienda y coordina parches y mitigaciones. No detecta ataques en curso.',
+    analogy:'El inspector que revisa puertas y ventanas mal cerradas antes de que entre el ladrón.',
+    scores:[3,3,0,1,5],
+    vs:[['EDR','El EDR reacciona a lo que ocurre; VM previene reduciendo la superficie de ataque.'],
+        ['TI','VM dice “tienes este hueco”; TI dice “y hoy lo están explotando”. Así se prioriza.']] },
+
+  /* ---------- AMPLIACIÓN: sensores adicionales ---------- */
+  NIDS:{ ext:true, short:'NIDS', color:0xffc58a, full:'Network Intrusion Detection System', cat:'Sensor: red (por firmas)',
+    one:'Escucha una copia del tráfico de red y lo compara con firmas y reglas de ataques conocidos (Snort, Suricata). Solo alerta.',
+    q:'¿Este tráfico coincide con un ataque conocido?',
+    sees:'Paquetes de red; busca patrones conocidos: exploits, malware, escaneos.',
+    data:'Copia del tráfico (TAP o SPAN) y reglas de firmas.',
+    acts:'No. Solo genera alertas: no está en línea y no bloquea.',
+    analogy:'Un guardia que mira las cámaras con un álbum de delincuentes conocidos: si reconoce a alguien, avisa.',
+    scores:[3,3,3,0,0],
+    vs:[['NDR','NDR = NIDS + análisis de comportamiento y ML + contexto para investigar. El NIDS solo conoce lo que tiene firma.'],
+        ['NIPS','Mismo análisis, pero el NIPS va en línea y puede bloquear. El NIDS solo observa.'],
+        ['HIDS','El NIDS mira la red; el HIDS mira dentro de un equipo.']] },
+  HIDS:{ ext:true, short:'HIDS', color:0x8ff5b8, full:'Host-based Intrusion Detection System', cat:'Sensor: equipo (integridad y logs)',
+    one:'Vigila un equipo desde dentro: integridad de archivos, logs del sistema, cambios de configuración y rootkits (OSSEC, Wazuh, Tripwire).',
+    q:'¿Alguien modificó algo que no debía en este servidor?',
+    sees:'Archivos críticos, registro, logs locales, cuentas y procesos de un host.',
+    data:'Logs locales y checksums de archivos.',
+    acts:'Sobre todo alerta. Su versión que bloquea se llama HIPS.',
+    analogy:'El sello de seguridad de una caja: si alguien lo rompe, lo notas.',
+    scores:[2,4,3,1,1],
+    vs:[['EDR','El EDR es la evolución: más telemetría, análisis de comportamiento, investigación y respuesta. El HIDS es más simple, basado en reglas e integridad.'],
+        ['NIDS','El HIDS ve el interior de un equipo; el NIDS ve el tráfico entre equipos.']] },
+  DECEPTION:{ ext:true, short:'Deception', color:0xe0aaff, full:'Deception y honeypots', cat:'Sensor: señuelos',
+    one:'Coloca señuelos (equipos, credenciales y archivos falsos) que ningún usuario legítimo tocaría: cualquier contacto es una alerta casi segura.',
+    q:'¿Alguien está explorando mi red donde no debería?',
+    sees:'Solo las interacciones con los señuelos.',
+    data:'Eventos de honeypots, honeytokens y cuentas trampa.',
+    acts:'Alerta de muy alta fidelidad (pocos falsos positivos). Puede disparar un SOAR para contener.',
+    analogy:'Una billetera “olvidada” con un rastreador dentro.',
+    scores:[1,3,4,1,2],
+    vs:[['UEBA','UEBA busca desviaciones estadísticas (con ruido). Deception alerta con certeza porque nadie legítimo debería tocar el señuelo.'],
+        ['NDR','NDR analiza todo el tráfico; Deception solo reacciona cuando alguien toca una trampa.']] },
+  SANDBOX:{ ext:true, short:'Sandbox', color:0xf4a6a6, full:'Sandbox (detonación de malware)', cat:'Análisis: ejecución aislada',
+    one:'Ejecuta archivos y enlaces sospechosos en un entorno aislado para ver qué hacen realmente, antes de dejarlos llegar al usuario.',
+    q:'¿Este archivo es malicioso cuando se ejecuta?',
+    sees:'Comportamiento del archivo: procesos que crea, conexiones, registro y archivos que modifica.',
+    data:'Adjuntos, descargas y URLs enviados por correo, firewall o EDR.',
+    acts:'Entrega un veredicto que permite bloquear o liberar; no vigila el resto del entorno.',
+    analogy:'Probar la comida en una cámara aislada antes de servirla.',
+    scores:[2,5,3,3,3],
+    vs:[['EDR','El EDR vigila lo que ocurre en el equipo real; el sandbox analiza antes, en un entorno desechable.'],
+        ['EMAIL','Email Security usa el sandbox para detonar los adjuntos sospechosos.']] },
+
+  /* ---------- AMPLIACIÓN: controles preventivos ---------- */
+  NIPS:{ ext:true, short:'NIPS', color:0xff7a3d, full:'Network Intrusion Prevention System', cat:'Control preventivo: red (en línea)',
+    one:'Como un NIDS, pero colocado en línea con el tráfico: si detecta un ataque, lo bloquea antes de que llegue a su destino.',
+    q:'¿Debo bloquear este paquete ahora mismo?',
+    sees:'Todo el tráfico que lo atraviesa, en tiempo real.',
+    data:'Tráfico en línea y firmas. Hoy suele venir integrado en el NGFW.',
+    acts:'Sí: descarta, bloquea o reinicia la conexión. Riesgo: un falso positivo corta tráfico legítimo.',
+    analogy:'El torniquete con detector de metales: no solo avisa, no te deja pasar.',
+    scores:[3,3,3,4,4],
+    vs:[['NIDS','Mismo motor de detección. El NIDS solo avisa; el NIPS actúa, por eso está en línea y un error cuesta más.'],
+        ['NGFW','Los NGFW modernos incluyen un módulo IPS junto con el filtrado por aplicación y usuario.']] },
+  NGFW:{ ext:true, short:'NGFW', color:0xe8556d, full:'Next-Generation Firewall', cat:'Control preventivo: perímetro y segmentación',
+    one:'Firewall que decide por aplicación, usuario y contenido (no solo IP y puerto), con IPS, filtrado web e inspección TLS.',
+    q:'¿Debo permitir esta conexión?',
+    sees:'Tráfico que cruza el perímetro o los segmentos internos.',
+    data:'Políticas, firmas IPS y reputación de URLs.',
+    acts:'Sí: permite, bloquea o segmenta. Es el brazo que el SOAR usa cuando “bloquea una IP”.',
+    analogy:'La puerta del edificio con recepción: pide identificación y decide quién entra y a qué piso.',
+    scores:[3,2,2,4,5],
+    vs:[['NIPS','El firewall decide por política (quién puede hablar con quién); el IPS decide por firma de ataque.'],
+        ['WAF','El NGFW protege la red en general; el WAF entiende HTTP y protege una aplicación web concreta.']] },
+  EPP:{ ext:true, short:'EPP / AV', color:0x1fb85f, full:'Endpoint Protection Platform (antivirus de nueva generación)', cat:'Control preventivo: endpoint',
+    one:'Bloquea malware y ataques, conocidos o por comportamiento, antes de que se ejecuten en el equipo. Es el “antivirus” moderno.',
+    q:'¿Puedo impedir que esto se ejecute?',
+    sees:'Archivos y procesos que intentan ejecutarse en el endpoint.',
+    data:'Firmas, ML local y reputación en la nube.',
+    acts:'Sí: previene y pone en cuarentena de forma automática.',
+    analogy:'Una vacuna: evita muchos ataques conocidos, pero no cubre todo.',
+    scores:[2,3,3,4,5],
+    vs:[['EDR','EPP previene; EDR investiga y responde a lo que se le escapó. Hoy casi siempre vienen juntos en un mismo agente.'],
+        ['HIDS','El EPP bloquea ejecuciones; el HIDS vigila la integridad y los cambios del sistema.']] },
+  EMAIL:{ ext:true, short:'Email Sec', color:0x7fd1ff, full:'Email Security Gateway', cat:'Control preventivo: correo',
+    one:'Filtra phishing, spam, adjuntos y enlaces maliciosos antes de que lleguen al buzón. El correo es la puerta de entrada más usada.',
+    q:'¿Este correo es seguro para el usuario?',
+    sees:'Remitente, cabeceras (SPF, DKIM, DMARC), enlaces, adjuntos y texto.',
+    data:'Mensajes y reputación de dominios.',
+    acts:'Sí: bloquea, pone en cuarentena o retira correos ya entregados.',
+    analogy:'El portero de correspondencia que abre los paquetes sospechosos.',
+    scores:[2,4,3,4,5],
+    vs:[['SANDBOX','Email Security envía los adjuntos dudosos a un sandbox para detonarlos.'],
+        ['XDR','El correo es uno de los dominios que un XDR correlaciona con endpoint e identidad.']] },
+  IAM:{ ext:true, short:'IAM / PAM', color:0xe6d36b, full:'Identity and Access Management (con MFA y PAM)', cat:'Control preventivo: identidad',
+    one:'Controla quién eres y a qué puedes acceder: SSO, MFA, privilegios mínimos y PAM para las cuentas administrativas.',
+    q:'¿Esta persona o cuenta debe tener este acceso?',
+    sees:'Autenticaciones, roles, permisos y sesiones privilegiadas.',
+    data:'Directorio (AD, Entra, Okta) y logs de autenticación.',
+    acts:'Sí: concede, niega, exige MFA o revoca sesiones.',
+    analogy:'El sistema de llaves del edificio: quién tiene cuál y por cuánto tiempo.',
+    scores:[3,3,2,4,5],
+    vs:[['UEBA','IAM define lo permitido; UEBA vigila si lo permitido se usa de forma anormal.'],
+        ['SIEM','Los logs de IAM son de las fuentes más valiosas para un SIEM.']] },
+  WAF:{ ext:true, short:'WAF', color:0x5fd0b0, full:'Web Application Firewall', cat:'Control preventivo: aplicaciones web',
+    one:'Inspecciona el tráfico HTTP/S hacia tus aplicaciones y bloquea ataques web como inyección SQL, XSS y bots.',
+    q:'¿Esta petición web es un ataque a mi aplicación?',
+    sees:'Peticiones y respuestas HTTP/S (OWASP Top 10).',
+    data:'Tráfico web, reglas y modelos de comportamiento.',
+    acts:'Sí: bloquea o limita peticiones.',
+    analogy:'Un guardia en la puerta de una tienda que revisa lo que pide cada cliente.',
+    scores:[2,4,3,4,4],
+    vs:[['NGFW','El NGFW mira conexiones de red; el WAF entiende el contenido de las peticiones web.'],
+        ['NIPS','El NIPS busca exploits de red genéricos; el WAF, ataques a la lógica de una app web.']] },
+  CASB:{ ext:true, short:'CASB / CSPM', color:0x7aa2ff, full:'CASB y CSPM (seguridad de nube y SaaS)', cat:'Control preventivo: nube',
+    one:'CASB controla el uso de apps SaaS (shadow IT, datos compartidos); CSPM detecta malas configuraciones en AWS, Azure y GCP.',
+    q:'¿Mi nube está bien configurada y quién usa qué?',
+    sees:'Configuración de cuentas cloud, permisos, buckets públicos y uso de SaaS.',
+    data:'APIs de los proveedores cloud y logs de SaaS.',
+    acts:'Alerta, corrige la configuración o bloquea el acceso según la política.',
+    analogy:'Un auditor que revisa a diario que las puertas de tu oficina rentada estén cerradas.',
+    scores:[3,3,3,3,5],
+    vs:[['VM','VM busca software vulnerable; CSPM busca configuraciones peligrosas en la nube.'],
+        ['XDR','La nube es otro dominio que un XDR puede incorporar a la correlación.']] },
+  DLP:{ ext:true, short:'DLP', color:0xd9778f, full:'Data Loss Prevention', cat:'Control preventivo: datos',
+    one:'Detecta y evita que datos sensibles (tarjetas, documentos de identidad, código) salgan por correo, USB, nube o impresión.',
+    q:'¿Estos datos pueden salir de aquí?',
+    sees:'Contenido en movimiento, en uso y almacenado, clasificado por patrones o etiquetas.',
+    data:'Políticas de clasificación y contenido de archivos.',
+    acts:'Sí: bloquea, cifra o pide justificación.',
+    analogy:'El control de salida de una biblioteca: revisa lo que intentas llevarte.',
+    scores:[3,4,2,4,4],
+    vs:[['UEBA','UEBA detecta el comportamiento raro (descarga masiva a las 3 a. m.); DLP examina el contenido y aplica política.'],
+        ['CASB','El CASB lo aplica en apps SaaS; el DLP también cubre endpoint, correo y USB.']] },
+
+  /* ---------- AMPLIACIÓN: proactivo, operación y gobierno ---------- */
+  ASM:{ ext:true, short:'ASM', color:0x56c2e6, full:'External Attack Surface Management', cat:'Prevención proactiva: visibilidad externa',
+    one:'Descubre desde afuera todo lo que tu empresa expone en internet: dominios, subdominios, servicios olvidados y credenciales filtradas.',
+    q:'¿Qué ve un atacante de mí que ni yo conozco?',
+    sees:'Activos expuestos en internet, incluidos los desconocidos (shadow IT).',
+    data:'DNS, certificados, escaneo de internet y brechas públicas.',
+    acts:'No actúa: descubre activos y alimenta el inventario de VM.',
+    analogy:'Dar la vuelta al edificio por fuera para ver qué ventanas quedaron abiertas.',
+    scores:[4,2,1,0,5],
+    vs:[['VM','VM escanea lo que ya conoces; ASM encuentra lo que no sabías que existía, y luego VM lo escanea.'],
+        ['TI','TI estudia a los atacantes; ASM estudia tu exposición vista desde afuera.']] },
+  MDR:{ ext:true, short:'MDR', color:0xf28b82, full:'Managed Detection and Response', cat:'Servicio: SOC externo',
+    one:'No es una herramienta sino un servicio: un equipo externo 24/7 opera tu EDR, XDR o SIEM, investiga alertas y responde por ti.',
+    q:'¿Quién vigila mis alertas a las 3 a. m. si no tengo SOC propio?',
+    sees:'Lo que ve la tecnología sobre la que trabaja (suele ser EDR o XDR), más el criterio humano de sus analistas.',
+    data:'Telemetría de tus herramientas y su propia inteligencia.',
+    acts:'Sí: contiene y responde según lo acordado contigo.',
+    analogy:'Contratar a una empresa de vigilancia en vez de armar tu propio equipo.',
+    scores:[3,3,4,4,1],
+    vs:[['SOAR','SOAR automatiza con playbooks; MDR pone analistas humanos, que a su vez pueden usar automatización.'],
+        ['XDR','El XDR es la tecnología; el MDR es el equipo que la opera por ti.']] },
+  DFIR:{ ext:true, short:'DFIR', color:0xb8a07a, full:'Digital Forensics and Incident Response', cat:'Respuesta: investigación',
+    one:'Cuando ocurre un incidente: preservar evidencia, reconstruir qué pasó, erradicar al atacante y recuperar los sistemas.',
+    q:'¿Cómo entraron, qué tocaron y cómo evitamos que vuelvan?',
+    sees:'Imágenes de disco, memoria, logs históricos y líneas de tiempo.',
+    data:'Evidencia forense de endpoints y red, más los logs retenidos en el SIEM.',
+    acts:'Sí, pero de forma manual y experta: contención, erradicación y recuperación.',
+    analogy:'Los peritos de la escena del crimen.',
+    scores:[3,5,2,4,1],
+    vs:[['SOAR','SOAR automatiza la respuesta rutinaria; DFIR investiga a fondo lo grave.'],
+        ['EDR','El EDR aporta gran parte de la evidencia que DFIR analiza.']] },
+  ITSM:{ ext:true, short:'Tickets / ITSM', color:0xcfd8dc, full:'Gestión de casos y tickets (ITSM)', cat:'Operación',
+    one:'Donde se registran, asignan y cierran incidentes y cambios (ServiceNow, Jira, TheHive): deja trazabilidad y coordina a las personas.',
+    q:'¿Quién está a cargo de esto y en qué estado va?',
+    sees:'Casos, tareas, SLAs y cambios aprobados.',
+    data:'Tickets creados por analistas o por el SOAR.',
+    acts:'Coordina personas; no detecta ni contiene.',
+    analogy:'La carpeta del caso, con responsable y fecha límite.',
+    scores:[2,1,0,2,2],
+    vs:[['SOAR','SOAR crea y actualiza los tickets de forma automática; el ITSM los guarda y asigna.'],
+        ['VM','Los parches que pide VM se ejecutan como cambios aprobados en el ITSM.']] },
+  GRC:{ ext:true, short:'GRC', color:0x9aa5b1, full:'Governance, Risk and Compliance', cat:'Gobierno',
+    one:'Políticas, análisis de riesgo y cumplimiento (ISO 27001, NIST, PCI-DSS) que definen qué hay que proteger y qué evidencia presentar.',
+    q:'¿Estamos protegiendo lo correcto y podemos demostrarlo?',
+    sees:'Riesgos, controles, auditorías y métricas.',
+    data:'Reportes del SIEM y de VM, resultados de auditorías y registros de riesgo.',
+    acts:'No opera controles técnicos: fija prioridades y exige evidencia.',
+    analogy:'El reglamento y la auditoría del edificio.',
+    scores:[4,1,0,0,3],
+    vs:[['SIEM','El SIEM aporta reportes que sirven como evidencia de cumplimiento.'],
+        ['VM','VM mide las vulnerabilidades; GRC decide qué riesgos se aceptan y cuáles no.']] },
+};
+const GROUPS = [
+  ['Núcleo', ['SIEM','XDR','EDR','SOAR','NDR','UEBA','TI','VM']],
+  ['Sensores adicionales', ['NIDS','HIDS','DECEPTION','SANDBOX']],
+  ['Controles preventivos', ['NIPS','NGFW','EPP','EMAIL','IAM','WAF','CASB','DLP']],
+  ['Proactivo, operación y gobierno', ['ASM','MDR','DFIR','ITSM','GRC']],
+];
+const ZONES = {
+  ENDPOINTS:{ name:'Endpoints', sub:'equipos', pos:[-9,0,0] },
+  NETWORK:  { name:'Red', sub:'tráfico · IoT', pos:[-3,0,0] },
+  IDENTITY: { name:'Identidad', sub:'cuentas', pos:[3,0,0] },
+  CLOUD:    { name:'Nube', sub:'SaaS · IaaS', pos:[9,0,0] },
+};
+const TOOL_POS = {
+  EDR:[-9,6,0], NDR:[-3,6,0], UEBA:[3,6,0], XDR:[0,6,0],
+  SIEM:[0,12.5,0], SOAR:[0,18.5,0], TI:[11,12,-3], VM:[-17,5,-10],
+  // sensores adicionales
+  NIDS:[-6.3,6,3], HIDS:[-12.5,6,3], DECEPTION:[11,6,3], SANDBOX:[7,6,-3.5],
+  // controles preventivos (fila trasera, cerca del suelo)
+  EPP:[-12.5,3,-6.5], NGFW:[-7.5,3,-6.5], NIPS:[-4,3,-6.5], IAM:[1,3,-6.5],
+  EMAIL:[4.5,3,-6.5], DLP:[8,3,-6.5], WAF:[11.5,3,-6.5], CASB:[15,3,-6.5],
+  // proactivo, operación, gobierno
+  ASM:[17,8,-10], MDR:[10,18.5,0], DFIR:[-10,12.5,0], ITSM:[-10,18.5,0], GRC:[-15,13,-6],
+};
+const FLOWS = [
+  {a:'ENDPOINTS',b:'EDR',c:'EDR'}, {a:'NETWORK',b:'NDR',c:'NDR'}, {a:'IDENTITY',b:'UEBA',c:'UEBA'}, {a:'CLOUD',b:'XDR',c:'XDR',bow:3},
+  {a:'EDR',b:'XDR',c:'EDR',bow:-4}, {a:'NDR',b:'XDR',c:'NDR'}, {a:'UEBA',b:'XDR',c:'UEBA'},
+  {a:'EDR',b:'SIEM',c:'EDR'}, {a:'NDR',b:'SIEM',c:'NDR'}, {a:'UEBA',b:'SIEM',c:'UEBA'},
+  {a:'ENDPOINTS',b:'SIEM',c:'SIEM',bow:4}, {a:'NETWORK',b:'SIEM',c:'SIEM',bow:5},
+  {a:'IDENTITY',b:'SIEM',c:'SIEM',bow:5}, {a:'CLOUD',b:'SIEM',c:'SIEM',bow:4},
+  {a:'TI',b:'SIEM',c:'TI'}, {a:'TI',b:'XDR',c:'TI',bow:-3},
+  {a:'SIEM',b:'SOAR',c:'SOAR'},
+  {a:'SOAR',b:'ENDPOINTS',c:'SOAR',bow:7}, {a:'SOAR',b:'NETWORK',c:'SOAR',bow:7},
+  {a:'SOAR',b:'IDENTITY',c:'SOAR',bow:7}, {a:'SOAR',b:'CLOUD',c:'SOAR',bow:7},
+  {a:'VM',b:'ENDPOINTS',c:'VM'}, {a:'VM',b:'NETWORK',c:'VM'}, {a:'VM',b:'CLOUD',c:'VM'},
+  // ampliación
+  {a:'ENDPOINTS',b:'HIDS',c:'HIDS'}, {a:'HIDS',b:'SIEM',c:'HIDS',bow:3},
+  {a:'NETWORK',b:'NIDS',c:'NIDS'}, {a:'NIDS',b:'SIEM',c:'NIDS',bow:3},
+  {a:'NETWORK',b:'DECEPTION',c:'DECEPTION',bow:3}, {a:'DECEPTION',b:'SIEM',c:'DECEPTION',bow:3},
+  {a:'EMAIL',b:'SANDBOX',c:'SANDBOX'}, {a:'NGFW',b:'SANDBOX',c:'SANDBOX'}, {a:'SANDBOX',b:'SIEM',c:'SANDBOX'},
+  {a:'EPP',b:'ENDPOINTS',c:'EPP'}, {a:'EPP',b:'EDR',c:'EPP'},
+  {a:'NGFW',b:'NETWORK',c:'NGFW'}, {a:'NGFW',b:'SIEM',c:'NGFW',bow:-3},
+  {a:'NIPS',b:'NETWORK',c:'NIPS'}, {a:'NIPS',b:'SIEM',c:'NIPS',bow:-3},
+  {a:'IAM',b:'IDENTITY',c:'IAM'}, {a:'IAM',b:'SIEM',c:'IAM',bow:-3},
+  {a:'EMAIL',b:'IDENTITY',c:'EMAIL'}, {a:'EMAIL',b:'XDR',c:'EMAIL',bow:-3},
+  {a:'DLP',b:'CLOUD',c:'DLP'}, {a:'DLP',b:'ENDPOINTS',c:'DLP',bow:-3}, {a:'DLP',b:'SIEM',c:'DLP',bow:-3},
+  {a:'WAF',b:'CLOUD',c:'WAF'}, {a:'WAF',b:'SIEM',c:'WAF',bow:-3},
+  {a:'CASB',b:'CLOUD',c:'CASB'}, {a:'CASB',b:'SIEM',c:'CASB',bow:-3},
+  {a:'ASM',b:'CLOUD',c:'ASM'}, {a:'ASM',b:'VM',c:'ASM',bow:-3},
+  {a:'SIEM',b:'MDR',c:'MDR'}, {a:'XDR',b:'MDR',c:'MDR',bow:7},
+  {a:'SIEM',b:'DFIR',c:'DFIR'}, {a:'ENDPOINTS',b:'DFIR',c:'DFIR',bow:3},
+  {a:'SOAR',b:'ITSM',c:'ITSM'}, {a:'VM',b:'ITSM',c:'ITSM',bow:-3},
+  {a:'SIEM',b:'GRC',c:'GRC'}, {a:'VM',b:'GRC',c:'GRC',bow:-3},
+];
+const LAYERS = [
+  ['1 · Controles preventivos · bloquean', ['EPP','NGFW','NIPS','EMAIL','IAM','WAF','CASB','DLP'], 'La primera línea. Frenan lo conocido, pero ninguno previene el 100%.'],
+  ['2 · Sensores · detectan lo que se escapó', ['EDR','NDR','UEBA','NIDS','HIDS','DECEPTION','SANDBOX'], 'Cada uno mira un dominio distinto: equipos, red, comportamiento, señuelos.'],
+  ['3 · Plataformas · correlacionan', ['SIEM','XDR'], 'Juntan señales. El SIEM es amplio y manual; el XDR es nativo y guiado.'],
+  ['4 · Respuesta · actúa', ['SOAR','MDR','DFIR','ITSM'], 'Automatizada (SOAR), humana externa (MDR), investigativa (DFIR) y trazable (tickets).'],
+  ['Contexto y prevención proactiva', ['TI','VM','ASM'], 'Atacantes, tus debilidades internas y tu exposición vista desde afuera.'],
+  ['Gobierno', ['GRC'], 'Define qué proteger, qué riesgos se aceptan y qué evidencia mostrar.'],
+];
+const STEPS = [
+  {title:'Antes del ataque', terms:['VM','TI'], zones:['ENDPOINTS','NETWORK','CLOUD'], at:'OUT',
+   text:'Vuln. Mgmt escanea y encuentra un servidor con un CVE sin parchar. Threat Intel avisa que un grupo está explotando justo ese CVE. El parche queda agendado… pero aún no se aplica.'},
+  {title:'Primera línea: prevención', terms:['EMAIL','SANDBOX','NGFW','IAM'], zones:['IDENTITY','NETWORK'], at:'IDENTITY', alert:['EMAIL'],
+   text:'Los controles preventivos frenan casi todo: el NGFW filtra el perímetro, Email Security y el Sandbox detienen adjuntos maliciosos, IAM exige MFA. Pero este phishing usa un enlace nuevo a una página falsa y la cuenta de Ana no tenía MFA obligatorio, así que pasa. Ningún control previene el 100%: por eso hay que detectar.'},
+  {title:'Robo de credenciales', terms:['UEBA'], zones:['IDENTITY'], at:'IDENTITY', alert:['UEBA'],
+   text:'Un phishing roba la contraseña de Ana y el atacante inicia sesión a las 3 a. m. desde otro país. No hay malware, así que el EDR no ve nada, pero UEBA detecta: “esto no es normal para Ana”.'},
+  {title:'Ejecución en el equipo', terms:['EDR'], zones:['ENDPOINTS'], at:'ENDPOINTS', alert:['EDR'],
+   text:'Explota el CVE pendiente y ejecuta PowerShell sospechoso. El EDR ve la cadena completa de procesos y la marca: profundidad total, pero solo en ese equipo.'},
+  {title:'Movimiento lateral', terms:['NDR'], zones:['NETWORK'], at:'NETWORK', alert:['NDR'],
+   text:'Salta a otros servidores por SMB y RDP, incluido uno sin agente. El NDR no necesita agente: ve el tráfico este-oeste anormal y luego las conexiones hacia un servidor C2.'},
+  {title:'Correlación', terms:['SIEM','TI','UEBA','EDR','NDR'], zones:[], alert:['SIEM','TI'],
+   text:'El SIEM junta las tres alertas más los logs del firewall y de AD. Su regla de correlación: login raro + PowerShell + SMB = incidente. Threat Intel confirma que la IP destino es un C2 conocido, y la prioridad sube.'},
+  {title:'Historia unificada', terms:['XDR','EDR','NDR','UEBA'], zones:['CLOUD'], at:'CLOUD', alert:['XDR'],
+   text:'El XDR muestra una sola línea de tiempo: identidad → endpoint → red → subida de datos a un bucket en la nube. Desde una consola se puede responder en todos los dominios.'},
+  {title:'Respuesta automática', terms:['SOAR','SIEM','EDR','NGFW','IAM','ITSM'], zones:['ENDPOINTS','NETWORK','IDENTITY','CLOUD'], mode:'contained', alert:['SOAR'],
+   text:'El playbook de SOAR enriquece el IOC, aísla el equipo (vía EDR), bloquea la IP en el NGFW, deshabilita la cuenta de Ana en IAM, abre un ticket y avisa al analista. En segundos, no en horas. Si no hubiera SOC propio, un MDR haría este mismo trabajo con analistas humanos.'},
+  {title:'Investigación y mejora', terms:['DFIR','SIEM','ITSM','GRC','VM','TI'], zones:['ENDPOINTS','NETWORK','CLOUD'], mode:'hidden',
+   text:'DFIR reconstruye cómo entraron y confirma que no quedan puertas traseras. VM parchea el CVE y revisa equipos similares; TI incorpora los nuevos indicadores; GRC registra el incidente y el control que falló (MFA). Se cierra el ciclo con mejor prevención que antes.'},
+];
+
+const hex = c => '#' + c.toString(16).padStart(6,'0');
+const colorOf = id => TERMS[id].color;
+
+/* ------------------------------------------------------------------ */
+/*  ESCENA                                                             */
+/* ------------------------------------------------------------------ */
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070b14);
+scene.fog = new THREE.Fog(0x070b14, 60, 130);
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 300);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+app.appendChild(renderer.domElement);
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+Object.assign(labelRenderer.domElement.style, {position:'absolute', top:'0', left:'0', pointerEvents:'none'});
+app.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.495;
+controls.minDistance = 8; controls.maxDistance = 80;
+
+scene.add(new THREE.AmbientLight(0x8899bb, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(10, 30, 20); scene.add(sun);
+const grid = new THREE.GridHelper(80, 80, 0x1c2c4a, 0x0f1a2e); grid.position.y = -0.02; scene.add(grid);
+
+/* helpers de material */
+const std = (color, opacity = 1, emis = 0.35) => {
+  const m = new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:emis, roughness:.4, metalness:.25, transparent:true, opacity});
+  m.userData.base = opacity; return m;
+};
+const wire = (color, opacity = .5) => {
+  const m = new THREE.MeshBasicMaterial({color, wireframe:true, transparent:true, opacity});
+  m.userData.base = opacity; return m;
+};
+const basic = (color, opacity = 1) => {
+  const m = new THREE.MeshBasicMaterial({color, transparent:true, opacity, side:THREE.DoubleSide, depthWrite:false});
+  m.userData.base = opacity; return m;
+};
+const lineMat = (color, opacity) => {
+  const m = new THREE.LineBasicMaterial({color, transparent:true, opacity});
+  m.userData.base = opacity; return m;
+};
+const mesh = (geo, mat) => new THREE.Mesh(geo, mat);
+function lineBetween(a, b, color, op) {
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), lineMat(color, op));
+}
+
+/* ------------------------------------------------------------------ */
+/*  NODOS (zonas + herramientas)                                       */
+/* ------------------------------------------------------------------ */
+const nodes = {};
+const pickables = [];
+
+function registerNode(id, group, pos, anchorY, labelHtml, labelColor, labelOffset, kind) {
+  group.position.set(...pos);
+  scene.add(group);
+  const mats = new Set();
+  group.traverse(o => {
+    if (o.material) { if (o.material.userData.base === undefined) o.material.userData.base = o.material.opacity; mats.add(o.material); }
+  });
+  const el = document.createElement('div');
+  el.className = 'lbl' + (kind === 'zone' ? ' zone' : '');
+  el.style.color = labelColor;
+  el.innerHTML = labelHtml;
+  const lbl = new CSS2DObject(el);
+  lbl.position.set(...labelOffset);
+  group.add(lbl);
+  nodes[id] = {id, kind, group, mats:[...mats], fade:1, labelEl:el,
+    anchor:new THREE.Vector3(pos[0], pos[1] + anchorY, pos[2])};
+}
+const markPick = (m, id) => { m.userData.term = id; pickables.push(m); return m; };
+
+/* --- zonas --- */
+function buildZone(id) {
+  const z = ZONES[id], g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(2.7, 2.9, .3, 40), std(0x1b2740, 1, .15)));
+  const ring = mesh(new THREE.TorusGeometry(2.8, .04, 8, 64), std(0x5b7bb0, 1, .8));
+  ring.rotation.x = Math.PI/2; ring.position.y = .16; g.add(ring);
+  const body = std(0x9bb0d0, 1, .2);
+  if (id === 'ENDPOINTS') {
+    for (let i = 0; i < 5; i++) {
+      const a = i/5*Math.PI*2, lap = new THREE.Group();
+      lap.add(mesh(new THREE.BoxGeometry(.9, .08, .6), body));
+      const scr = mesh(new THREE.BoxGeometry(.9, .6, .05), std(0x6fa0ff, 1, .5));
+      scr.position.set(0, .3, -.28); scr.rotation.x = -.2; lap.add(scr);
+      lap.position.set(Math.cos(a)*1.6, .24, Math.sin(a)*1.6); lap.rotation.y = -a - Math.PI/2;
+      g.add(lap);
+    }
+    const srv = mesh(new THREE.BoxGeometry(.8, 1.5, .8), std(0x5b7bb0, 1, .3)); srv.position.y = .9; g.add(srv);
+  } else if (id === 'NETWORK') {
+    const c = new THREE.Vector3(0, .9, 0);
+    const hub = mesh(new THREE.SphereGeometry(.38, 16, 12), std(0x9bb0d0, 1, .5));
+    hub.position.copy(c); g.add(hub);
+    const pts = [];
+    for (let i = 0; i < 5; i++) {
+      const a = i/5*Math.PI*2, p = new THREE.Vector3(Math.cos(a)*1.7, .6 + (i%2)*.6, Math.sin(a)*1.7);
+      pts.push(p);
+      const s = mesh(new THREE.SphereGeometry(.22, 12, 10), body); s.position.copy(p); g.add(s);
+      g.add(lineBetween(c, p, 0x7f98c8, 1));
+    }
+    pts.forEach((p, i) => g.add(lineBetween(p, pts[(i+1)%5], 0x516a96, 1)));
+  } else if (id === 'IDENTITY') {
+    for (let i = 0; i < 4; i++) {
+      const a = i/4*Math.PI*2 + .4, p = new THREE.Group();
+      const bd = mesh(new THREE.ConeGeometry(.42, 1.0, 16), body); bd.position.y = .65; p.add(bd);
+      const hd = mesh(new THREE.SphereGeometry(.26, 16, 12), body); hd.position.y = 1.38; p.add(hd);
+      p.position.set(Math.cos(a)*1.4, 0, Math.sin(a)*1.4); g.add(p);
+    }
+  } else {
+    [[-.8,.9,0,.65],[0,1.2,.1,.9],[.85,.9,0,.65],[.25,.8,.6,.6],[-.3,.8,-.6,.55]].forEach(([x,y,zz,r]) => {
+      const s = mesh(new THREE.SphereGeometry(r, 18, 14), std(0xb7c8e6, 1, .25)); s.position.set(x, y, zz); g.add(s);
+    });
+  }
+  registerNode(id, g, z.pos, 1.3, `${z.name}<small>${z.sub}</small>`, '#9bb0d0', [0, -.3, 3.7], 'zone');
+}
+
+/* --- herramientas --- */
+function buildTool(id) {
+  const c = colorOf(id), g = new THREE.Group();
+  g.userData.spin = [];
+  const spin = (o, y = .5, x = 0) => g.userData.spin.push([o, y, x]);
+  let labelY = -2.7;
+
+  if (id === 'SIEM') {
+    g.add(markPick(mesh(new THREE.IcosahedronGeometry(1.5, 1), std(c, .9, .55)), id));
+    const w = mesh(new THREE.IcosahedronGeometry(2.3, 1), wire(c, .45)); g.add(w); spin(w, .15, .08);
+    const orbit = new THREE.Group();
+    for (let i = 0; i < 6; i++) {
+      const a = i/6*Math.PI*2, s = mesh(new THREE.SphereGeometry(.2, 10, 8), std(c, 1, .9));
+      s.position.set(Math.cos(a)*3, 0, Math.sin(a)*3); orbit.add(s);
+    }
+    g.add(orbit); spin(orbit, .6);
+    labelY = -3.6;
+  } else if (id === 'EDR') {
+    const cone = mesh(new THREE.ConeGeometry(1.2, 2.4, 4), std(c, .9, .5)); cone.rotation.x = Math.PI; g.add(markPick(cone, id));
+    const w = mesh(new THREE.ConeGeometry(1.8, 3.4, 4), wire(c, .4)); w.rotation.x = Math.PI; g.add(w);
+    spin(cone, .6); spin(w, .6);
+  } else if (id === 'NDR') {
+    const t = mesh(new THREE.TorusGeometry(1.3, .3, 16, 48), std(c, .9, .5)); g.add(markPick(t, id)); spin(t, .7);
+    const core = mesh(new THREE.SphereGeometry(.45, 16, 12), std(c, 1, .9)); g.add(markPick(core, id));
+    const t2 = mesh(new THREE.TorusGeometry(1.9, .03, 8, 64), wire(c, .6)); t2.rotation.x = Math.PI/2; g.add(t2); spin(t2, 0, .5);
+  } else if (id === 'UEBA') {
+    const k = mesh(new THREE.TorusKnotGeometry(.85, .26, 100, 14), std(c, .9, .5)); g.add(markPick(k, id)); spin(k, .5, .2);
+    const w = mesh(new THREE.SphereGeometry(1.9, 14, 10), wire(c, .25)); g.add(w);
+  } else if (id === 'XDR') {
+    const core = mesh(new THREE.OctahedronGeometry(1.1), std(c, .95, .7)); g.add(markPick(core, id)); spin(core, .5, .2);
+    const disc = mesh(new THREE.CylinderGeometry(14, 14, .05, 72), basic(c, .07)); g.add(disc);
+    const edge = mesh(new THREE.TorusGeometry(14, .07, 8, 160), std(c, .8, .9)); edge.rotation.x = Math.PI/2; g.add(markPick(edge, id));
+    const inner = mesh(new THREE.TorusGeometry(13.2, .02, 8, 160), wire(c, .35)); inner.rotation.x = Math.PI/2; g.add(inner);
+    labelY = 0; // la etiqueta se coloca aparte, en el borde del disco
+  } else if (id === 'SOAR') {
+    const cog = new THREE.Group();
+    const hub = mesh(new THREE.CylinderGeometry(1.2, 1.2, .55, 24).rotateX(Math.PI/2), std(c, .95, .5)); cog.add(markPick(hub, id));
+    for (let i = 0; i < 10; i++) {
+      const a = i/10*Math.PI*2, tooth = mesh(new THREE.BoxGeometry(.45, .5, .55), std(c, .95, .5));
+      tooth.position.set(Math.cos(a)*1.45, Math.sin(a)*1.45, 0); tooth.rotation.z = a; cog.add(markPick(tooth, id));
+    }
+    const hole = mesh(new THREE.TorusGeometry(.5, .08, 8, 24), std(0x070b14, 1, 0)); cog.add(hole);
+    g.add(cog); g.userData.spin.push([cog, 0, 0, .35]);
+  } else if (id === 'TI') {
+    const eye = mesh(new THREE.SphereGeometry(1.1, 24, 18), std(c, .9, .5)); g.add(markPick(eye, id));
+    const iris = mesh(new THREE.SphereGeometry(.5, 16, 12), std(0xffffff, 1, .9)); iris.position.z = .85; g.add(markPick(iris, id));
+    const pupil = mesh(new THREE.SphereGeometry(.22, 12, 10), std(0x04141a, 1, 0)); pupil.position.z = 1.28; g.add(pupil);
+    const r = mesh(new THREE.TorusGeometry(1.7, .05, 8, 64), wire(c, .6)); r.rotation.x = Math.PI/2.4; g.add(r); spin(r, .5);
+    labelY = -2.4;
+  } else if (id === 'VM') {
+    const hexa = mesh(new THREE.CylinderGeometry(1.1, 1.1, .5, 6), std(c, .95, .5)); g.add(markPick(hexa, id));
+    const sweepGeo = new THREE.CircleGeometry(3.2, 32, 0, 1.1).rotateX(-Math.PI/2);
+    const sweep = new THREE.Group(); sweep.add(mesh(sweepGeo, basic(c, .35))); sweep.position.y = -.1; g.add(sweep); spin(sweep, 1.2);
+    const rr = mesh(new THREE.TorusGeometry(3.2, .03, 8, 64), std(c, .6, .8)); rr.rotation.x = Math.PI/2; rr.position.y = -.1; g.add(rr);
+    labelY = -1.6;
+  }
+
+  else if (id === 'NIDS') {
+    const t = mesh(new THREE.TorusGeometry(.8, .2, 12, 32), std(c, .9, .5)); g.add(markPick(t, id)); spin(t, .7);
+    g.add(markPick(mesh(new THREE.SphereGeometry(.28, 12, 10), std(c, 1, .9)), id)); labelY = -1.7;
+  } else if (id === 'HIDS') {
+    const m = mesh(new THREE.TetrahedronGeometry(1), std(c, .9, .5)); g.add(markPick(m, id)); spin(m, .6);
+    const w = mesh(new THREE.TetrahedronGeometry(1.5), wire(c, .4)); g.add(w); spin(w, .6); labelY = -1.9;
+  } else if (id === 'DECEPTION') {
+    const jar = mesh(new THREE.CylinderGeometry(.6, .8, 1.2, 16), std(c, .55, .5)); g.add(markPick(jar, id));
+    const honey = mesh(new THREE.SphereGeometry(.4, 12, 10), std(0xffd84d, 1, .8)); honey.position.y = -.2; g.add(honey);
+    const lid = mesh(new THREE.CylinderGeometry(.65, .65, .15, 16), std(c, 1, .6)); lid.position.y = .68; g.add(lid); spin(jar, .4); labelY = -1.8;
+  } else if (id === 'SANDBOX') {
+    const cube = mesh(new THREE.BoxGeometry(1.7, 1.7, 1.7), wire(c, .8)); g.add(markPick(cube, id)); spin(cube, .3, .2);
+    const bug = mesh(new THREE.IcosahedronGeometry(.4, 0), std(0xff4455, 1, .9)); g.add(markPick(bug, id)); spin(bug, 1.2, .8); labelY = -1.9;
+  } else if (id === 'NIPS') {
+    const stop = mesh(new THREE.CylinderGeometry(1.1, 1.1, .35, 8).rotateX(Math.PI/2).rotateZ(Math.PI/8), std(c, .92, .55)); g.add(markPick(stop, id));
+    const bar = mesh(new THREE.BoxGeometry(1.3, .22, .42), std(0xffffff, 1, .8)); g.add(bar); spin(stop, 0, 0); labelY = -1.8;
+  } else if (id === 'NGFW') {
+    const wall = new THREE.Group();
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) {
+      const b = mesh(new THREE.BoxGeometry(.62, .38, .45), std(c, .92, .5));
+      b.position.set((k - 1)*.68 + (r % 2)*.3 - .15, (r - 1)*.42, 0); wall.add(markPick(b, id));
+    }
+    g.add(wall); spin(wall, .35); labelY = -1.9;
+  } else if (id === 'EPP') {
+    const d = mesh(new THREE.DodecahedronGeometry(1), std(c, .9, .55)); g.add(markPick(d, id)); spin(d, .5, .2);
+    const w = mesh(new THREE.DodecahedronGeometry(1.4), wire(c, .35)); g.add(w); spin(w, -.4); labelY = -1.9;
+  } else if (id === 'EMAIL') {
+    const body = mesh(new THREE.BoxGeometry(1.8, 1.2, .2), std(c, .92, .5)); g.add(markPick(body, id));
+    [-1, 1].forEach(s => {
+      const fl = mesh(new THREE.BoxGeometry(1.1, .08, .22), std(0xffffff, 1, .7));
+      fl.position.set(s*.45, .2, .12); fl.rotation.z = -s*.55; g.add(fl);
+    });
+    spin(body, .5); labelY = -1.5;
+  } else if (id === 'IAM') {
+    const key = new THREE.Group();
+    key.add(markPick(mesh(new THREE.TorusGeometry(.5, .16, 10, 24), std(c, .95, .55)), id));
+    const rod = mesh(new THREE.CylinderGeometry(.1, .1, 1.6, 10).rotateZ(Math.PI/2), std(c, .95, .55)); rod.position.x = 1.0; key.add(markPick(rod, id));
+    [1.5, 1.2].forEach(x => { const t = mesh(new THREE.BoxGeometry(.18, .4, .18), std(c, .95, .55)); t.position.set(x, -.25, 0); key.add(t); });
+    g.add(key); spin(key, .6); labelY = -1.5;
+  } else if (id === 'WAF') {
+    const dome = mesh(new THREE.SphereGeometry(1.2, 20, 12, 0, Math.PI*2, 0, Math.PI/2), std(c, .5, .5)); g.add(markPick(dome, id));
+    const dw = mesh(new THREE.SphereGeometry(1.25, 14, 8, 0, Math.PI*2, 0, Math.PI/2), wire(c, .5)); g.add(dw);
+    const base = mesh(new THREE.CylinderGeometry(1.2, 1.2, .12, 20), std(c, 1, .6)); g.add(base); spin(dw, .4); labelY = -1.3;
+  } else if (id === 'CASB') {
+    [[-.55,0,.55],[.05,.25,.7],[.65,0,.55]].forEach(([x, y, r]) => {
+      const s = mesh(new THREE.SphereGeometry(r, 14, 10), std(c, .9, .5)); s.position.set(x, y, 0); g.add(markPick(s, id));
+    });
+    const ring = mesh(new THREE.TorusGeometry(1.5, .04, 8, 48), wire(c, .7)); ring.rotation.x = Math.PI/2.5; g.add(ring); spin(ring, .6); labelY = -1.7;
+  } else if (id === 'DLP') {
+    const lock = mesh(new THREE.BoxGeometry(1.2, .9, .6), std(c, .92, .5)); lock.position.y = -.2; g.add(markPick(lock, id));
+    const sh = mesh(new THREE.TorusGeometry(.4, .1, 8, 20, Math.PI), std(0xffffff, 1, .7)); sh.position.y = .25; g.add(sh);
+    spin(lock, .5); labelY = -1.6;
+  } else if (id === 'ASM') {
+    const gl = mesh(new THREE.SphereGeometry(1.1, 18, 12), wire(c, .6)); g.add(markPick(gl, id)); spin(gl, .3);
+    const eq = mesh(new THREE.TorusGeometry(1.5, .05, 8, 48), std(c, 1, .8)); eq.rotation.x = Math.PI/2.4; g.add(eq); spin(eq, .5);
+    g.add(markPick(mesh(new THREE.SphereGeometry(.22, 10, 8), std(c, 1, .9)), id)); labelY = -1.9;
+  } else if (id === 'MDR') {
+    const per = new THREE.Group();
+    const b = mesh(new THREE.ConeGeometry(.7, 1.3, 16), std(c, .92, .5)); b.position.y = -.3; per.add(markPick(b, id));
+    const h = mesh(new THREE.SphereGeometry(.38, 14, 10), std(c, .92, .5)); h.position.y = .5;
+    per.add(h); g.add(per);
+    const ring = mesh(new THREE.TorusGeometry(1.4, .05, 8, 48), std(c, .9, .8)); ring.rotation.x = Math.PI/2; g.add(ring); spin(ring, .6);
+    labelY = -2.0;
+  } else if (id === 'DFIR') {
+    const lens = new THREE.Group();
+    lens.add(markPick(mesh(new THREE.TorusGeometry(.8, .13, 10, 32), std(c, .95, .55)), id));
+    const handle = mesh(new THREE.CylinderGeometry(.1, .1, 1.1, 10), std(c, .95, .55)); handle.position.set(.85, -.85, 0); handle.rotation.z = Math.PI/4; lens.add(markPick(handle, id));
+    g.add(lens); spin(lens, .5); labelY = -1.9;
+  } else if (id === 'ITSM') {
+    const board = mesh(new THREE.BoxGeometry(1.4, 1.8, .15), std(c, .92, .5)); g.add(markPick(board, id));
+    [.5, 0, -.5].forEach(y => { const l = mesh(new THREE.BoxGeometry(.9, .1, .18), std(0x0e1526, 1, 0)); l.position.set(0, y, .02); g.add(l); });
+    spin(board, .45); labelY = -1.7;
+  } else if (id === 'GRC') {
+    const temple = new THREE.Group();
+    [-.7, 0, .7].forEach((x, i) => { const p = mesh(new THREE.BoxGeometry(.4, 1.3 + i*.1, .4), std(c, .92, .45)); p.position.set(x, (1.3 + i*.1)/2 - .65, 0); temple.add(markPick(p, id)); });
+    const top = mesh(new THREE.BoxGeometry(2.1, .22, .6), std(c, 1, .5)); top.position.y = .8; temple.add(markPick(top, id));
+    g.add(temple); spin(temple, .35); labelY = -1.5;
+  }
+
+  const t = TERMS[id];
+  const labelPos = id === 'XDR' ? [-13.2, 0, 5.5] : [0, labelY, 0];
+  registerNode(id, g, TOOL_POS[id], 0, `${t.short}`, hex(c), labelPos, 'tool');
+}
+Object.keys(ZONES).forEach(buildZone);
+ORDER.forEach(buildTool);
+
+/* ------------------------------------------------------------------ */
+/*  FLUJOS (líneas + partículas)                                       */
+/* ------------------------------------------------------------------ */
+const pGeo = new THREE.SphereGeometry(.14, 8, 6);
+const flows = FLOWS.map(f => {
+  const A = nodes[f.a].anchor, B = nodes[f.b].anchor;
+  const mid = A.clone().add(B).multiplyScalar(.5); mid.z += f.bow || 0;
+  const curve = new THREE.QuadraticBezierCurve3(A, mid, B);
+  const color = colorOf(f.c);
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(40)), lineMat(color, 1));
+  scene.add(line);
+  const pm = basic(color, 1);
+  const ps = [0, 1, 2].map(() => { const m = new THREE.Mesh(pGeo, pm); scene.add(m); return m; });
+  const ext = !!(TERMS[f.a]?.ext || TERMS[f.b]?.ext);
+  return {...f, ext, curve, line, pm, ps, len:curve.getLength(), lo:.3, po:.7};
+});
+
+/* ------------------------------------------------------------------ */
+/*  ATACANTE + PULSOS                                                  */
+/* ------------------------------------------------------------------ */
+const attacker = new THREE.Group();
+const atkMat = std(0xff2233, 1, .9);
+attacker.add(mesh(new THREE.IcosahedronGeometry(.7, 1), atkMat));
+attacker.add(mesh(new THREE.IcosahedronGeometry(1.1, 0), wire(0xff2233, .6)));
+const atkLight = new THREE.PointLight(0xff2233, 40, 14); attacker.add(atkLight);
+const atkLbl = document.createElement('div'); atkLbl.className = 'lbl'; atkLbl.style.color = '#ff5560'; atkLbl.textContent = 'Atacante';
+const atkLblObj = new CSS2DObject(atkLbl); atkLblObj.position.set(0, -1.6, 0); attacker.add(atkLblObj);
+attacker.position.set(16, 2, 10); attacker.scale.setScalar(0.001); scene.add(attacker);
+const atk = {target:new THREE.Vector3(16, 2, 10), scale:0, mode:'hidden'};
+
+const pulses = [];
+function pulse(pos, color) {
+  const m = mesh(new THREE.RingGeometry(.9, 1.0, 48), basic(color, 1));
+  m.position.copy(pos); scene.add(m); pulses.push({m, t:0});
+}
+
+/* ------------------------------------------------------------------ */
+/*  ESTADO + CÁMARA                                                    */
+/* ------------------------------------------------------------------ */
+const state = {term:null, step:-1, hl:null, coreOnly:false};
+let camGoal = null;
+
+function focusOn(ids) {
+  const box = new THREE.Box3();
+  ids.filter(i => nodes[i].group.visible).forEach(i => box.expandByPoint(nodes[i].anchor));
+  const center = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  const dist = THREE.MathUtils.clamp(size.length()*1.15 + 14, 24, 56);
+  camGoal = {target:center, pos:center.clone().add(new THREE.Vector3(dist*.1, dist*.55, dist*.8))};
+}
+controls.addEventListener('start', () => { camGoal = null; });
+
+function neighborsOf(id) {
+  const s = new Set([id]);
+  FLOWS.forEach(f => { if (f.a === id) s.add(f.b); if (f.b === id) s.add(f.a); });
+  return s;
+}
+
+function overview() {
+  state.term = null; state.step = -1; state.hl = null; atk.mode = 'hidden';
+  focusOn(Object.keys(nodes)); render();
+}
+function selectTerm(id) {
+  state.term = id; state.step = -1; atk.mode = 'hidden';
+  state.hl = neighborsOf(id); focusOn([...state.hl]); render();
+}
+function startSim() { goStep(0); }
+function goStep(i) {
+  i = Math.max(0, Math.min(STEPS.length - 1, i));
+  const s = STEPS[i];
+  state.term = null; state.step = i;
+  state.hl = new Set([...s.terms, ...(s.zones || [])]);
+  if (s.at === 'OUT') atk.target.set(16, 2, 10);
+  else if (s.at) atk.target.copy(nodes[s.at].anchor).add(new THREE.Vector3(0, .6, 2.6));
+  atk.mode = s.mode || 'active';
+  atkMat.color.set(atk.mode === 'contained' ? 0x667085 : 0xff2233);
+  atkMat.emissive.set(atk.mode === 'contained' ? 0x222833 : 0xff2233);
+  atkLight.intensity = atk.mode === 'contained' ? 0 : 40;
+  spawnAlerts();
+  focusOn([...state.hl, ...(s.at && s.at !== 'OUT' ? [s.at] : [])]);
+  render();
+}
+function spawnAlerts() {
+  if (state.step < 0) return;
+  (STEPS[state.step].alert || []).forEach(id => pulse(nodes[id].anchor, colorOf(id)));
+}
+setInterval(spawnAlerts, 1800);
+
+/* ------------------------------------------------------------------ */
+/*  UI                                                                 */
+/* ------------------------------------------------------------------ */
+const panel = document.getElementById('panel');
+const btns = document.getElementById('btns');
+GROUPS.forEach(([title, ids], gi) => {
+  const h = document.createElement('div');
+  h.className = 'grp'; h.textContent = title; if (gi) h.dataset.ext = '1';
+  btns.appendChild(h);
+  ids.forEach(id => {
+    const b = document.createElement('button');
+    b.className = 'term'; b.dataset.id = id; b.style.setProperty('--c', hex(colorOf(id)));
+    if (gi) b.dataset.ext = '1';
+    b.innerHTML = `<i></i><b>${TERMS[id].short}</b>`;
+    b.onclick = () => selectTerm(id);
+    btns.appendChild(b);
+  });
+});
+document.getElementById('coreOnly').onchange = e => {
+  state.coreOnly = e.target.checked;
+  ORDER.forEach(id => { nodes[id].group.visible = !(state.coreOnly && TERMS[id].ext); });
+  btns.querySelectorAll('[data-ext]').forEach(el => { el.style.display = state.coreOnly ? 'none' : ''; });
+  overview();
+};
+document.getElementById('btnHome').onclick = overview;
+document.getElementById('btnSim').onclick = startSim;
+
+const chip = id => `<span class="chip" style="--c:${hex(colorOf(id))}">${TERMS[id].short}</span>`;
+
+function render() {
+  btns.querySelectorAll('.term').forEach(b => b.classList.toggle('on', b.dataset.id === state.term));
+  if (state.step >= 0) panel.innerHTML = simHTML();
+  else if (state.term) panel.innerHTML = termHTML(state.term);
+  else panel.innerHTML = overviewHTML();
+  panel.scrollTop = 0;
+  panel.querySelectorAll('[data-term]').forEach(el => el.onclick = () => selectTerm(el.dataset.term));
+  const q = s => panel.querySelector(s);
+  if (q('#prev')) q('#prev').onclick = () => goStep(state.step - 1);
+  if (q('#next')) q('#next').onclick = () => goStep(state.step + 1);
+  if (q('#exit')) q('#exit').onclick = overview;
+  if (q('#again')) q('#again').onclick = () => goStep(0);
+}
+
+function overviewHTML() {
+  return `
+    <h2>¿Cómo encajan?</h2>
+    <div class="full">Imagina una empresa (abajo) y las herramientas que la protegen (arriba).</div>
+    <p class="one">Los <b>sensores</b> miran un dominio, las <b>plataformas</b> juntan señales, <b>SOAR</b> responde, y <b>TI + VM</b> aportan contexto y prevención.</p>
+    ${LAYERS.map(([t, ids, d]) => `
+      <div class="layer" ${ids.length === 1 ? `data-term="${ids[0]}"` : ''} style="--c:${hex(colorOf(ids[0]))}">
+        <b>${t}</b>
+        <div class="chips">${ids.map(i => `<span class="chip" data-term="${i}" style="--c:${hex(colorOf(i))};cursor:pointer">${TERMS[i].short}</span>`).join('')}</div>
+        <small>${d}</small>
+      </div>`).join('')}
+    <h3>Cómo leer la escena</h3>
+    <div class="row"><p>• Plataforma de abajo: <b>endpoints, red, identidad y nube</b> (lo que se protege).<br>
+    • Las partículas viajan en la dirección del flujo de datos o de acción.<br>
+    • El disco violeta es el <b>XDR</b>: abarca varios sensores a la vez.<br>
+    • Al elegir un término, lo no relacionado se atenúa.</p></div>
+    <button class="act primary" id="go" data-sim style="margin-top:8px">▶ Ver un ataque paso a paso</button>`;
+}
+
+function termHTML(id) {
+  const t = TERMS[id], c = hex(t.color);
+  return `<div style="--c:${c}">
+    <h2 style="color:${c}">${t.short}</h2>
+    <div class="full">${t.full}</div>
+    <span class="tag">${t.cat}</span>
+    <p class="one">${t.one}</p>
+    <div class="row q"><span>Pregunta que responde</span><p>${t.q}</p></div>
+    <div class="row"><span>Qué ve</span><p>${t.sees}</p></div>
+    <div class="row"><span>Datos que usa</span><p>${t.data}</p></div>
+    <div class="row"><span>¿Actúa?</span><p>${t.acts}</p></div>
+    <div class="row"><span>Analogía</span><p>${t.analogy}</p></div>
+    <h3>Perfil comparado</h3>
+    ${AXES.map(([n, d], i) => `<div class="bar" title="${d}"><span>${n}</span><u style="--v:${t.scores[i]/5}"></u></div>`).join('')}
+    <div class="note">Valores didácticos aproximados, no una medición real.</div>
+    <h3>No lo confundas con…</h3>
+    ${t.vs.map(([o, txt]) => `<button class="vs" data-term="${o}" style="--c:${hex(colorOf(o))}"><strong>${TERMS[o].short}</strong><div>${txt}</div></button>`).join('')}
+  </div>`;
+}
+
+function simHTML() {
+  const s = STEPS[state.step], last = state.step === STEPS.length - 1;
+  return `
+    <div class="full">Simulación · paso ${state.step + 1} de ${STEPS.length}</div>
+    <div class="dots">${STEPS.map((_, i) => `<i class="${i < state.step ? 'd' : i === state.step ? 'now' : ''}"></i>`).join('')}</div>
+    <h2>${s.title}</h2>
+    <p class="one" style="margin-top:10px">${s.text}</p>
+    <h3>Protagonistas en este paso</h3>
+    <div class="chips">${s.terms.map(chip).join('')}</div>
+    <div class="note">Toca un término en el menú para ver su ficha completa.</div>
+    <div class="stepnav">
+      <button id="prev" ${state.step === 0 ? 'disabled' : ''}>◀ Anterior</button>
+      ${last ? '<button id="again">↻ Repetir</button>' : '<button id="next">Siguiente ▶</button>'}
+    </div>
+    <button class="act" id="exit" style="margin-top:10px">Salir de la simulación</button>`;
+}
+
+/* tabla comparativa */
+const modal = document.getElementById('modal');
+document.getElementById('tbl').innerHTML = `<table><thead><tr><th>Término</th><th>Pregunta que responde</th><th>Qué mira</th><th>¿Actúa?</th></tr></thead><tbody>${
+  ORDER.map(id => { const t = TERMS[id];
+    return `<tr><td style="color:${hex(t.color)}">${t.short}</td><td>${t.q}</td><td>${t.sees}</td><td>${t.acts}</td></tr>`; }).join('')
+}</tbody></table>`;
+document.getElementById('btnTable').onclick = () => { modal.hidden = false; };
+document.getElementById('modalX').onclick = () => { modal.hidden = true; };
+modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (!modal.hidden) modal.hidden = true; else if (state.step >= 0) overview(); }
+  if (state.step >= 0 && modal.hidden) {
+    if (e.key === 'ArrowRight') goStep(state.step + 1);
+    if (e.key === 'ArrowLeft') goStep(state.step - 1);
+  }
+});
+panel.addEventListener('click', e => { if (e.target.id === 'go') startSim(); });
+
+/* selección con el mouse */
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+function pickAt(e) {
+  mouse.set(e.clientX/innerWidth*2 - 1, -(e.clientY/innerHeight)*2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(pickables.filter(o => nodes[o.userData.term].group.visible), false)[0];
+  return hit ? hit.object.userData.term : null;
+}
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = {x:e.clientX, y:e.clientY}; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) { const id = pickAt(e); if (id) selectTerm(id); }
+  down = null;
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (e.buttons) return;
+  renderer.domElement.style.cursor = pickAt(e) ? 'pointer' : 'grab';
+});
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); labelRenderer.setSize(innerWidth, innerHeight);
+});
+
+/* ------------------------------------------------------------------ */
+/*  LOOP                                                               */
+/* ------------------------------------------------------------------ */
+const clock = new THREE.Clock();
+let time = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05); time += dt;
+  const k = Math.min(1, dt*6);
+
+  // giro de las herramientas
+  ORDER.forEach(id => (nodes[id].group.userData.spin || []).forEach(([o, y, x, z]) => {
+    o.rotation.y += dt*y; o.rotation.x += dt*x; if (z) o.rotation.z += dt*z;
+  }));
+
+  // modo "solo núcleo": oculta lo ampliado
+  ORDER.forEach(id => { nodes[id].group.visible = !(state.coreOnly && TERMS[id].ext); });
+
+  // atenuación de nodos
+  Object.values(nodes).forEach(n => {
+    const target = !state.hl ? 1 : state.hl.has(n.id) ? 1 : .12;
+    n.fade += (target - n.fade)*k;
+    n.mats.forEach(m => { m.opacity = m.userData.base*n.fade; });
+    n.labelEl.style.opacity = (.15 + .85*n.fade).toFixed(2);
+  });
+
+  // flujos
+  flows.forEach(f => {
+    if (state.coreOnly && f.ext) { f.line.visible = false; f.ps.forEach(p => { p.visible = false; }); return; }
+    f.line.visible = true;
+    const on = state.hl && state.hl.has(f.a) && state.hl.has(f.b);
+    const lt = state.hl ? (on ? .85 : .04) : (f.ext ? .12 : .28), pt = state.hl ? (on ? 1 : 0) : (f.ext ? .35 : .7);
+    f.lo += (lt - f.lo)*k; f.po += (pt - f.po)*k;
+    f.line.material.opacity = f.lo; f.pm.opacity = f.po;
+    const vis = f.po > .02;
+    f.ps.forEach((p, i) => {
+      p.visible = vis;
+      if (vis) p.position.copy(f.curve.getPoint(((time*6/f.len) + i/3) % 1));
+    });
+  });
+
+  // atacante
+  const wantScale = atk.mode === 'hidden' ? 0.001 : 1;
+  atk.scale += (wantScale - atk.scale)*k;
+  attacker.scale.setScalar(Math.max(atk.scale, 0.001));
+  attacker.position.lerp(atk.target, 1 - Math.exp(-dt*1.8));
+  attacker.position.y += Math.sin(time*3)*.01;
+  attacker.rotation.y += dt*(atk.mode === 'contained' ? .1 : 1.5);
+  atkLbl.textContent = atk.mode === 'contained' ? 'Contenido' : 'Atacante';
+
+  // pulsos de alerta
+  for (let i = pulses.length - 1; i >= 0; i--) {
+    const p = pulses[i]; p.t += dt/1.6;
+    p.m.scale.setScalar(1 + p.t*5); p.m.material.opacity = Math.max(0, 1 - p.t); p.m.lookAt(camera.position);
+    if (p.t >= 1) { scene.remove(p.m); p.m.geometry.dispose(); p.m.material.dispose(); pulses.splice(i, 1); }
+  }
+
+  // cámara
+  if (camGoal) {
+    const a = 1 - Math.exp(-dt*3);
+    camera.position.lerp(camGoal.pos, a); controls.target.lerp(camGoal.target, a);
+    if (camera.position.distanceTo(camGoal.pos) < .05) camGoal = null;
+  }
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+
+camera.position.set(2, 18, 42);
+overview();
+animate();
+</script>
+</body>
+</html>
