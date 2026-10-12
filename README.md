@@ -7,4 +7,4 @@ Threat Intel, Vuln. Mgmt y otros 17 términos de seguridad, con una simulación 
 Abre `index.html` en el navegador (requiere internet: three.js se carga desde un CDN).
 Si el navegador bloquea algo al abrirlo con doble clic: `python3 -m http.server`.
 
-- Oscar Llamas
+[https://oscarllamas6.github.io/security-tour-3d](https://oscarllamas6.github.io/security-tour-3d/)
